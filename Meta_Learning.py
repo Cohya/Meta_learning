@@ -2,6 +2,7 @@
 import numpy as np 
 import tensorflow as tf 
 from sklearn.utils import shuffle
+from tqdm import tqdm
 
 class FOMAML():
     
@@ -18,7 +19,7 @@ class FOMAML():
         self.number_of_trainable_params = len(self.trainable_params)
         
         self.num_meta_rounds = 300
-        self.batch_size = 64
+        self.batch_size = 32
         
         
         if k is None:
@@ -29,7 +30,7 @@ class FOMAML():
         
     def train(self, iterations):
         
-        for _ in range(iterations):
+        for ik in tqdm(range(iterations)):
             phi_s = []
             K = len(self.tasks)
             indexs = np.random.choice(K,size=self.k, replace=False)
@@ -44,7 +45,7 @@ class FOMAML():
                 ## Shuffle before training 
                 X_train, Y_train = shuffle(X_train, Y_train)
                 X_test, Y_test = shuffle(X_test, Y_test)
-                print(X_train.shape, Y_train.shape, X_test.shape, Y_test.shape)
+                # print(X_train.shape, Y_train.shape, X_test.shape, Y_test.shape)
                 # X_train, Y_train, X_test, Y_test = X_train[:32], Y_train[:32], X_test[:32], Y_test[:32]
                 
                 
@@ -57,7 +58,7 @@ class FOMAML():
         
             self.update_theta(phi_s = phi_s,
                               indexs = indexs)
-            
+        print("Iteration:", ik, "Examined Tasks:", indexs)
         return [w.numpy() for w in self.trainable_params]
         
         
@@ -80,18 +81,18 @@ class FOMAML():
                 
                 y_hat = self.net(X_batch, train = True)
                 if i == 0 :
-                    print(y_hat.shape, Y_batch.shape)
+                    # print(y_hat.shape, Y_batch.shape)
                     loss = loss_func(Y_batch, y_hat) * batch_size
                     
-                    print(loss)
+                    # print(loss)
                 else:
                     # loss += loss_func(Y_batch, y_hat) * batch_size
                     loss = 1/(i+1) * (loss_func(Y_batch, y_hat) * batch_size - loss)
-                    print(loss," ", i, "/", n_baches)
+                    # print(loss," ", i, "/", n_baches)
             
             # loss = loss / n 
-            print("pass in loss task")
-            input("input")
+            # print("pass in loss task")
+            # input("input")
         return loss
     
     def calc_phi(self, X_train, Y_train, optimizer, loss_func):
@@ -112,7 +113,7 @@ class FOMAML():
             loss_k = self.loss_task(X = X,
                                     Y = Y,
                                     loss_func = loss_func)
-            input("Hallo")
+            # input("Hallo")
         gradients = tape.gradient(loss_k, self.trainable_params)
         
         return gradients
