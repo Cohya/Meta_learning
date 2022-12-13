@@ -3,51 +3,76 @@ import numpy as np
 import tensorflow as tf 
 from sklearn.utils import shuffle
 from tqdm import tqdm
-
+import time 
 class FOMAML():
     
-    def __init__(self, net, tasks, optimizers, loss_fucntions, k = None):
-        # k - is the numebr of tests to train on each run 
-        
+    def __init__(self, net, tasksGenerator):
+                 # k = None):
+         
+        #net ---> is a nueral network with accessiblility to the trainable weights ! 
+        # trainable_weights = net.trianable_weights 
         self.net = net
-        self.tasks = tasks
-        self.optimizers = optimizers
-        self.loss_fucntions = loss_fucntions
+        # self.tasks = tasks
+        self.tasksGenerator = tasksGenerator
         self.trainable_params = self.net.trainable_params
-        self.kappa = 0.01
-        self.eta = 0.1
+        
+
         self.number_of_trainable_params = len(self.trainable_params)
         
         self.num_meta_rounds = 300
         self.batch_size = 32
         
         
-        if k is None:
-            self.k = len(tasks)//2 
-        else:
-            self.k = k
-            
         
-    def train(self, iterations):
+    def train(self, iterations,
+              optimizers,
+              loss_fucntions,
+              kappa = 0.01,
+              eta = 0.1):
+        
+        ### In the original paper:
+            # Iteration is the number of time we sample random tasks batchs ("epoch style")
+            # eta == alpha 
+            # kappa == beta 
+            # loss functions --> a list of loss function for each task
+            # optimizers --> a list of loss fucntion for each task, for now it is not possible 
+            
+        print("Start training in:")
+        for i in range(6):
+            print(5-i, end="\r")
+            time.sleep(1)
+        
+        self.kappa = kappa
+        self.eta = eta
+        self.optimizers = optimizers
+        self.loss_fucntions = loss_fucntions
+        batch_size = 4
+        self.k = batch_size
+        if self.tasksGenerator is not None:
+            try:
+                self.tasksGenerator.n_possible_tasks
+            except:
+                print("No modul tasksGenerator.num_of_tasks!")    
+        else: 
+            K = len(self.tasks)
         
         for ik in tqdm(range(iterations)):
             phi_s = []
-            K = len(self.tasks)
-            indexs = np.random.choice(K,size=self.k, replace=False)
-            
-            for i in indexs:
+            if self.tasksGenerator is not None:
+                self.tasks,_,indexes = self.tasksGenerator.sample_batch_of_tasks(batch_size)
+                
+            for i in range(batch_size):
                 task = self.tasks[i]
-                loss_func = self.loss_fucntions[i]
-                opt = self.optimizers[i]
+                loss_func = self.loss_fucntions[indexes[i]]
+                opt = self.optimizers[indexes[i]]
                 
                 X_train, Y_train, X_test, Y_test = task
                 
+            
                 ## Shuffle before training 
                 X_train, Y_train = shuffle(X_train, Y_train)
                 X_test, Y_test = shuffle(X_test, Y_test)
-                # print(X_train.shape, Y_train.shape, X_test.shape, Y_test.shape)
-                # X_train, Y_train, X_test, Y_test = X_train[:32], Y_train[:32], X_test[:32], Y_test[:32]
-                
+
                 
                 phi_k = self.calc_phi(X_train = X_train,
                                         Y_train = Y_train,
@@ -57,8 +82,8 @@ class FOMAML():
                 phi_s.append(phi_k) # Now I have all the phi's
         
             self.update_theta(phi_s = phi_s,
-                              indexs = indexs)
-        print("Iteration:", ik, "Examined Tasks:", indexs)
+                              indexes = indexes)
+        print("Iteration:", ik, "Examined Tasks:", indexes)
         return [w.numpy() for w in self.trainable_params]
         
         
@@ -81,18 +106,15 @@ class FOMAML():
                 
                 y_hat = self.net(X_batch, train = True)
                 if i == 0 :
-                    # print(y_hat.shape, Y_batch.shape)
                     loss = loss_func(Y_batch, y_hat) * batch_size
                     
-                    # print(loss)
                 else:
                     # loss += loss_func(Y_batch, y_hat) * batch_size
                     loss = 1/(i+1) * (loss_func(Y_batch, y_hat) * batch_size - loss)
                     # print(loss," ", i, "/", n_baches)
             
             # loss = loss / n 
-            # print("pass in loss task")
-            # input("input")
+
         return loss
     
     def calc_phi(self, X_train, Y_train, optimizer, loss_func):
@@ -113,7 +135,7 @@ class FOMAML():
             loss_k = self.loss_task(X = X,
                                     Y = Y,
                                     loss_func = loss_func)
-            # input("Hallo")
+            
         gradients = tape.gradient(loss_k, self.trainable_params)
         
         return gradients
@@ -136,12 +158,12 @@ class FOMAML():
         for w, w_2 in zip(self.trainable_params,weights_to_copy):
             w.assign(w_2)
         
-    def update_theta(self, phi_s, indexs):
+    def update_theta(self, phi_s, indexes):
         
         grads_phi_s = []
         self.save_original_thetas()
-        for i,j in enumerate(indexs):
-            task = self.tasks[j]
+        for i,j in enumerate(indexes):
+            task = self.tasks[i]
             loss_func = self.loss_fucntions[j]
             opt = self.optimizers[j]
             phi_k = phi_s[i]
@@ -155,9 +177,7 @@ class FOMAML():
             
             
             grads_phi_s.append(g_phi_k)
-        # print("##################################################")
-        # for i,ww in enumerate(grads_phi_s):
-        #     print(i,":", ww)
+
         # thea_new calculate here the new theta
         sum_of_phis_grads = []
         for i in range(self.number_of_trainable_params):
@@ -166,8 +186,7 @@ class FOMAML():
                 w += grads_phi_s[j][i]
         
             sum_of_phis_grads.append(w)
-            # print("update shape: ", w.shape)
-            # print("i AM HERE:", self.original_theta[i])
+
             self.original_theta[i] = self.original_theta[i] - self.kappa * w/self.k
         
         self.copy_weights_to_net(weights_to_copy = self.original_theta)
