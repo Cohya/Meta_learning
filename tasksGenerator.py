@@ -25,21 +25,32 @@ class TasksGeneratorCfar10(object):
         # I would like to classify between 4 classes
         # I know that I have only 10 classes in general [0,1,2,3,...9]
         # I will svae classes [6,7,8,9] as my varification over unseen data 
-        self.K = 4 
+        self.K = 3
         self.all_combinatoin = all_combination([0,1,2,3,4,5], self.K)  
         self.n_possible_tasks = len(self.all_combinatoin)
     
-    def load_specific_task(self, task_num):
+    def load_specific_task(self, task_num, samples_per_class):
         classes_for_task = self.all_combinatoin[task_num]
         
-        
+    
         for i in range(len(classes_for_task)):
             c = classes_for_task[i]
             # print(Y_test_original.shape )
                 
-            # print(c)
-            X_test_c = self.X_test[self.Y_test == c]
+
+            X_test_c = self.X_test[self.Y_test == c] 
             X_train_c = self.X_train[self.Y_train == c]
+            
+            train_indexes = np.random.choice(len(X_train_c),
+                                           size = samples_per_class,
+                                           replace=False)
+  
+            test_indexes = np.random.choice(len(X_test_c),
+                                           size = samples_per_class, 
+                                           replace=False)
+            
+            X_test_c = X_test_c[tuple(test_indexes),:]
+            X_train_c = X_train_c[tuple(train_indexes),:]
             
             Y_test_c = create_one_hot(i, len(X_test_c),self.K)
             Y_train_c = create_one_hot(i, len(X_train_c), self.K)
@@ -60,13 +71,13 @@ class TasksGeneratorCfar10(object):
         return X_train, Y_train, X_test, Y_test
     
     
-    def sample_batch_of_tasks(self, batch_size):
+    def sample_batch_of_tasks(self, batch_size, samples_per_class):
         
         ## generate radom tasks:
             
         indexes = np.random.choice(self.n_possible_tasks, size = batch_size, replace= False)
         
-        tasks  = [self.load_specific_task(i) for i in indexes]
+        tasks  = [self.load_specific_task(i, samples_per_class) for i in indexes]
         
         info_tasks = [self.all_combinatoin[i] for i in indexes]
         

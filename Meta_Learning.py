@@ -55,11 +55,12 @@ class FOMAML():
                 print("No modul tasksGenerator.num_of_tasks!")    
         else: 
             K = len(self.tasks)
-        
+        samples_per_class = 10
         for ik in tqdm(range(iterations)):
             phi_s = []
             if self.tasksGenerator is not None:
-                self.tasks,_,indexes = self.tasksGenerator.sample_batch_of_tasks(batch_size)
+                self.tasks,_,indexes = self.tasksGenerator.sample_batch_of_tasks(batch_size,
+                                                                                 samples_per_class)
                 
             for i in range(batch_size):
                 task = self.tasks[i]
@@ -73,8 +74,6 @@ class FOMAML():
                 X_train, Y_train = shuffle(X_train, Y_train)
                 X_test, Y_test = shuffle(X_test, Y_test)
 
-                X_train, Y_train = X_test[:32], Y_test[:32] 
-                X_test, Y_test = X_test[:32], Y_test[:32]
                 phi_k = self.calc_phi(X_train = X_train,
                                         Y_train = Y_train,
                                         optimizer = opt,
@@ -171,8 +170,6 @@ class FOMAML():
             phi_k = phi_s[i]
             _ , _, X_test, Y_test = task 
             X_test, Y_test =shuffle(X_test, Y_test)
-            X_test = X_test[:32]
-            Y_test = Y_test[:32]
             g_phi_k = self.calc_grad_phi(X_test = X_test,
                                          Y_test = Y_test,
                                          loss_func = loss_func,
@@ -196,7 +193,6 @@ class FOMAML():
         
         # self.copy_weights_to_net(weights_to_copy = self.original_theta)
         sum_of_phis_grads2 = [ww/self.k  for ww in sum_of_phis_grads]
-        print("asdfdf")
         self.meta_opt.apply_gradients(zip(sum_of_phis_grads2, self.trainable_params))
     
         
