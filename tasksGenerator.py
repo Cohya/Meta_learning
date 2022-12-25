@@ -2,6 +2,7 @@
 import tensorflow as tf 
 import numpy as np 
 from utils import all_combination, one_hot_encode, create_one_hot
+from sklearn.utils import shuffle 
 
 class TasksGeneratorCfar10(object):
     
@@ -54,7 +55,8 @@ class TasksGeneratorCfar10(object):
                 X_test = np.concatenate((X_test, X_test_c), axis = 0)
                 Y_test = np.concatenate((Y_test, Y_test_c), axis = 0)
                 
-        
+        X_train, Y_train = shuffle(X_train, Y_train)
+        X_test, Y_test = shuffle(X_test, Y_test)
         return X_train, Y_train, X_test, Y_test
     
     

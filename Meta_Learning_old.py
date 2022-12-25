@@ -22,7 +22,7 @@ class FOMAML():
         self.num_meta_rounds = 300
         self.batch_size = 32
         
-        self.meta_opt = tf.keras.optimizers.Adam(learning_rate= 0.001)
+        
         
     def train(self, iterations,
               optimizers,
@@ -46,7 +46,7 @@ class FOMAML():
         self.eta = eta
         self.optimizers = optimizers
         self.loss_fucntions = loss_fucntions
-        batch_size = 8
+        batch_size = 4
         self.k = batch_size
         if self.tasksGenerator is not None:
             try:
@@ -67,14 +67,13 @@ class FOMAML():
                 opt = self.optimizers[indexes[i]]
                 
                 X_train, Y_train, X_test, Y_test = task
-                # we should take an equivalent number from each class
+                
             
                 ## Shuffle before training 
                 X_train, Y_train = shuffle(X_train, Y_train)
                 X_test, Y_test = shuffle(X_test, Y_test)
 
-                X_train, Y_train = X_test[:32], Y_test[:32] 
-                X_test, Y_test = X_test[:32], Y_test[:32]
+                
                 phi_k = self.calc_phi(X_train = X_train,
                                         Y_train = Y_train,
                                         optimizer = opt,
@@ -126,7 +125,6 @@ class FOMAML():
                                     loss_func = loss_func)
         
         phi_k = [w - self.eta * g_L_w for w,g_L_w in zip(self.trainable_params, gradients_theta)]
-        # You should do it using Adam Optimizer!!!
         # print(gradients_theta)
         # input("I just hold you in clacl_phi in FOMAML modul!")
         return phi_k
@@ -170,9 +168,7 @@ class FOMAML():
             opt = self.optimizers[j]
             phi_k = phi_s[i]
             _ , _, X_test, Y_test = task 
-            X_test, Y_test =shuffle(X_test, Y_test)
-            X_test = X_test[:32]
-            Y_test = Y_test[:32]
+            
             g_phi_k = self.calc_grad_phi(X_test = X_test,
                                          Y_test = Y_test,
                                          loss_func = loss_func,
@@ -184,7 +180,6 @@ class FOMAML():
 
         # thea_new calculate here the new theta
         sum_of_phis_grads = []
-        self.copy_weights_to_net(weights_to_copy = self.original_theta)
         for i in range(self.number_of_trainable_params):
             w = 0.
             for j in range(self.k):
@@ -192,12 +187,11 @@ class FOMAML():
         
             sum_of_phis_grads.append(w)
 
-            # self.original_theta[i] = self.original_theta[i] - self.kappa * w/self.k
+            self.original_theta[i] = self.original_theta[i] - self.kappa * w/self.k
         
-        # self.copy_weights_to_net(weights_to_copy = self.original_theta)
-        sum_of_phis_grads2 = [ww/self.k  for ww in sum_of_phis_grads]
-        print("asdfdf")
-        self.meta_opt.apply_gradients(zip(sum_of_phis_grads2, self.trainable_params))
+        self.copy_weights_to_net(weights_to_copy = self.original_theta)
+        
+        
     
         
         

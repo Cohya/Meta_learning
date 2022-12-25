@@ -287,7 +287,7 @@ class CNN_keras():
 class CNN_kerasCfar10():
     def __init__(self, K):
         
-        inputs = tf.keras.Input(shape = (28,28,3))
+        inputs = tf.keras.Input(shape = (32,32,3))
         x = tf.keras.layers.Conv2D(filters = 32, 
                                    kernel_size=(3,3),
                                    activation= 'relu',
@@ -298,24 +298,27 @@ class CNN_kerasCfar10():
         x = tf.keras.layers.Flatten()(x)
         x = tf.keras.layers.Dense(128, activation='relu')(x)
         # x = tf.keras.layers.Dropout(0.25)(x)
-        outputs = tf.keras.layers.Dense(3, activation='softmax')(x)
+        outputs = tf.keras.layers.Dense(K, activation='softmax')(x)
         
         self.model = tf.keras.Model(inputs=inputs, outputs=outputs)
         
         self.trainable_params = self.model.trainable_variables        
-        
+    @tf.function       
     def __call__(self,x, train):
+        # x - np.float32(x)
         x = np.expand_dims(x, axis = -1)
         # print("data shape to net ", x.shape)
         return self.model(x, training = train)
-       
+    
+    # @tf.function   
     def calc_loss(self, X, Y, training = False):
+        # X = tf.float32(X)
         y_pred = self.model(X, training = training)
         
         loss = self.loss_fnc(Y, y_pred)
         
         return loss
-        
+    @tf.function   
     def update_weights(self, X, Y):
         
         with tf.GradientTape(watch_accessed_variables=True) as tape:
@@ -326,9 +329,10 @@ class CNN_kerasCfar10():
         self.opt.apply_gradients(zip(gradients, self.trainable_params))
         
         return loss
-     
+    # @tf.function   
     def accuracy(self, X, Y):
         n = len(X)
+        X = np.float32(X)
         y_pred = self.model(X, training = False)
         y_pred = y_pred.numpy()
         y_pred = np.argmax(y_pred, axis = 1)
@@ -376,12 +380,11 @@ class CNN_kerasCfar10():
                     acc_train = self.accuracy(X_batch, Y_batch)
                     acc_train_vec.append(acc_train)
                     
-            
+            if epoch % 5 ==0 :
                 print("Epoch: %d, Loss_train: %.3f, Loss_test: %.3f, Acc_train: %.2f, \
-                      Acc_test: %.2f" % (epoch, loss_train_vec[-1], 
-                      loss_test_vec[-1], acc_train_vec[-1], acc_test_vec[-1]))
-
-        
+                  Acc_test: %.2f" % (epoch, loss_train_vec[-1], 
+                  loss_test_vec[-1], acc_train_vec[-1], acc_test_vec[-1]))
+        return loss_train_vec, loss_test_vec, acc_train_vec, acc_test_vec
                   
         
 class CNN_keras_2():
