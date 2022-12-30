@@ -10,11 +10,13 @@ import pickle
 import matplotlib.pyplot as plt 
 
 generator = taskGeneratorSin()
-task = generator.get_task(150)
+
+
 
 net = ANN(1, 1, [40,40], trainable=True)
 net_copy = ANN(1,1,[40,40], trainable=False)
    
+task = generator.get_task(150)
 X_train , y_train, X_test, y_test = task
 
 K = 10
