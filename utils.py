@@ -386,6 +386,98 @@ class CNN_kerasCfar10():
                   loss_test_vec[-1], acc_train_vec[-1], acc_test_vec[-1]))
         return loss_train_vec, loss_test_vec, acc_train_vec, acc_test_vec
                   
+class ANN_regressionSin(object):
+    def __init__(self):
+        
+        x_input = tf.keras.Input(shape = (1))
+        x = tf.keras.layers.Dense(40, activation= tf.nn.relu)(x_input)
+        x = tf.keras.layers.Dense(40, activation=tf.nn.relu)(x)
+        x_output = tf.keras.layers.Dense(1)(x)
+        
+        self.model = tf.keras.Model(inputs=x_input, outputs=x_output)
+        
+        self.trainable_params = self.model.trainable_variables
+    
+    def __call__(self,x, training = False):
+        if len(x) == 1 :
+            x = np.expand_dims(x, axis = 1 )
+        return self.model(x, training = training)
+    
+    def calc_loss(self, X, Y, training = False):
+        # X = tf.float32(X)
+        y_pred = self.model(X, training = training)
+        
+        loss = self.loss_fnc(Y, y_pred)
+        
+        return loss
+    @tf.function   
+    def update_weights(self, X, Y):
+        
+        with tf.GradientTape(watch_accessed_variables=True) as tape:
+            loss = self.calc_loss(X = X, Y = Y, training = True )
+            
+        gradients = tape.gradient(loss,  self.trainable_params)
+        
+        self.opt.apply_gradients(zip(gradients, self.trainable_params))
+        
+        return loss
+    # @tf.function   
+    def accuracy(self, X, Y):
+        n = len(X)
+        X = np.float32(X)
+        y_pred = self.model(X, training = False)
+        y_pred = y_pred.numpy()
+        y_pred = np.argmax(y_pred, axis = 1)
+        y_true = np.argmax(Y, axis = 1)
+        
+        acc = np.sum(y_pred == y_true)/n 
+        
+        return acc
+        
+        
+        
+    def train(self, X_train, Y_train, X_test, Y_test,batch_sz = 32, epochs = 5):
+        # self.opt = tf.keras.optimizers.Adam(learning_rate= 0.01)
+        self.opt = tf.keras.optimizers.SGD(learning_rate= 0.01)
+        self.loss_fnc = tf.keras.losses.CategoricalCrossentropy()
+        
+        n = np.shape(X_train)[0]
+        n_batchs = n // batch_sz
+        X_test, Y_test= shuffle(X_test, Y_test)
+        
+        loss_train_vec = []
+        acc_train_vec =  []
+        
+        loss_test_vec = []
+        acc_test_vec = []
+        
+        for epoch in range(epochs):
+            X_train, Y_train = shuffle(X_train, Y_train)
+            
+            for j in range(n_batchs):
+                X_batch = X_train[j * batch_sz : (j+1)*batch_sz, ...]
+                Y_batch = Y_train[j*batch_sz : (j+1)*batch_sz]
+                
+                loss_i = self.update_weights(X_batch, Y_batch)
+                
+            
+                if j ==0 :
+                    loss_train_vec.append(loss_i.numpy())
+                    loss_test = self.calc_loss(X_test, Y_test, False)
+                    loss_test_vec.append(loss_test.numpy())
+                    
+                    acc_test = self.accuracy(X_test, Y_test)
+                    acc_test_vec.append(acc_test)
+                    
+                    acc_train = self.accuracy(X_batch, Y_batch)
+                    acc_train_vec.append(acc_train)
+                    
+            if epoch % 5 ==0 :
+                print("Epoch: %d, Loss_train: %.3f, Loss_test: %.3f, Acc_train: %.2f, \
+                  Acc_test: %.2f" % (epoch, loss_train_vec[-1], 
+                  loss_test_vec[-1], acc_train_vec[-1], acc_test_vec[-1]))
+        return loss_train_vec, loss_test_vec, acc_train_vec, acc_test_vec
+        
         
 class CNN_keras_2():
     def __init__(self):

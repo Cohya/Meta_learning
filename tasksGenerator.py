@@ -86,3 +86,45 @@ class TasksGeneratorCfar10(object):
 # generator = TasksGeneratorCfar10()
 
 # tasks, info = generator.sample_batch_of_tasks(batch_size = 4 )
+
+class taskGeneratorSin(object):
+    def __init__(self):
+        
+        self.phaseRange = [0, np.pi]
+        self.amplitude = [0.1, 5.0]
+        self.xRange = [-5.0, 5.0]
+        
+    def get_task(self,number_of_samples = 10):
+        # here we use a randomnace 
+        phase = np.random.rand()*(self.phaseRange[1] - self.phaseRange[0]) + self.phaseRange[0]
+        amp = np.random.rand() * (self.amplitude[1] - self.amplitude[0]) + self.amplitude[0]
+        x = np.random.rand(number_of_samples) * (self.xRange[1]  - self.xRange[0]) + self.xRange[0]
+        
+        y = amp*np.sin(x + phase)
+        
+        x = np.expand_dims(np.float32(x), axis = -1)
+        y = np.expand_dims(np.float32(y), axis = -1)
+        
+        n = int(number_of_samples *0.8)
+        X_train = x[:n]
+        X_test = x[n:]
+        y_train = y[:n]
+        y_test = y[n:]
+        
+        return X_train, y_train, X_test, y_test 
+    
+    def sample_batch_of_tasks(self, batch_size, number_of_samples):
+        tasks = []
+        for i in range(batch_size):
+            task = self.get_task(number_of_samples)
+            tasks.append(task)
+            
+        return tasks, None, None 
+    
+    
+    
+    
+        
+        
+        
+        
